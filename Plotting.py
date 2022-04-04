@@ -74,7 +74,7 @@ def PlotPerformance(parameters, inputfolder, outputfolder, filepostfix, plotfold
 
     if not os.path.isdir(plotfolder): os.makedirs(plotfolder)
 
-
+    # Definition von test und validation sample ist vertauscht
     log_model_performance(parameters=parameters, model_history=model_history, outputfolder=outputfolder)
     plot_loss(parameters=parameters, plotfolder=plotfolder, model_history=model_history)
     plot_accuracy(parameters=parameters, plotfolder=plotfolder, model_history=model_history)
@@ -82,9 +82,13 @@ def PlotPerformance(parameters, inputfolder, outputfolder, filepostfix, plotfold
     plot_model(model, show_shapes=True, to_file=plotfolder+'/Model.pdf')
     plot_confusion_matrices(parameters=parameters, plotfolder=plotfolder, pred_train=pred_train, labels_train=labels_train, sample_weights_train=sample_weights_train, eventweights_train=eventweights_train, pred_val=pred_val, labels_val=labels_val, sample_weights_val=sample_weights_val, eventweights_val=eventweights_val, use_best_model=use_best_model)
 
-
     pred_trains, weights_trains, normweights_trains, lumiweights_trains, pred_vals, weights_vals, normweights_vals, lumiweights_vals, pred_tests, weights_tests, normweights_tests, lumiweights_tests = get_data_dictionaries(parameters=parameters, eventweights_train=eventweights_train, sample_weights_train=sample_weights_train, pred_train=pred_train, labels_train=labels_train, eventweights_val=eventweights_val, sample_weights_val=sample_weights_val, pred_val=pred_val, labels_val=labels_val, eventweights_test=eventweights_test, sample_weights_test=sample_weights_test, pred_test=pred_test, labels_test=labels_test)
     plot_outputs_1d_nodes(parameters=parameters, plotfolder=plotfolder, pred_trains=pred_trains, labels_train=labels_train, weights_trains=weights_trains, lumiweights_trains=lumiweights_trains, normweights_trains=normweights_trains, pred_vals=pred_vals, labels_val=labels_val, weights_vals=weights_vals, lumiweights_vals=lumiweights_vals, normweights_vals=normweights_vals, pred_signals=pred_signals, eventweight_signals=eventweight_signals, normweight_signals=normweight_signals, usesignals=usesignals, use_best_model=use_best_model)
+
+    with open(inputfolder+'/variable_names.pkl', 'r') as f:
+        variable_names = pickle.load(f)
+        print variable_names
+    get_input_weights(parameters=parameters, plotfolder=plotfolder, model=model, variable_names=variable_names)
 
     plot_outputs_1d_classes(parameters=parameters, plotfolder=plotfolder, pred_trains=pred_trains, labels_train=labels_train, weights_trains=weights_trains, lumiweights_trains=lumiweights_trains, normweights_trains=normweights_trains, pred_vals=pred_vals, labels_val=labels_val, weights_vals=weights_vals, lumiweights_vals=lumiweights_vals, normweights_vals=normweights_vals, use_best_model=use_best_model)
     # plot_outputs_2d(parameters=parameters, plotfolder=plotfolder, pred_vals=pred_vals, lumiweights_vals=lumiweights_vals, use_best_model=use_best_model)
@@ -121,202 +125,8 @@ def PlotPerformance(parameters, inputfolder, outputfolder, filepostfix, plotfold
     model.save_weights(outputfolder+'/weights.h5')
     print "--- END of DNN Plotting ---"
 
-def PlotBayesianPerformance(parameters, inputfolder, outputfolder, filepostfix, plotfolder, use_best_model=False, usesignals=[0]):
-    print ' ---- Now plotting the performance (PlotBayesianPerformance) ---- '
-    gErrorIgnoreLevel = kWarning
-
-    # Get parameters
-    # runonfullsample = parameters['runonfullsample']
-    runonfraction = parameters['runonfraction']
-    fraction = get_fraction(parameters)
-    eqweight = parameters['eqweight']
-    # classes = parameters['classes']
-    tag = dict_to_str(parameters)
-    classtag = get_classes_tag(parameters)
-
-    # Get inputs
-    input_train, input_test, input_val, labels_train, labels_test, labels_val, sample_weights_train, sample_weights_test, sample_weights_val, eventweights_train, eventweights_test, eventweights_val, signals, eventweight_signals, normweight_signals = load_data(parameters, inputfolder=inputfolder, filepostfix=filepostfix)
-    layers=parameters['layers']
-
-    # Get model and its history
-    regrate=parameters['regrate']
-    #sigma=1.0 #FixME, read https://arxiv.org/pdf/1904.10004.pdf to choose right value           
-    sigma=parameters['sigma']         
-    prior = lambda x, y, z, w, k: _prior_normal_fn(sigma, x, y, z, w, k)                                                                                                     
-#    method = lambda d: d.mean()
-    method = lambda d: d.sample()
-    layer_hd = []
-    batchnorm_hd = []
-    dropout_hd = []
-    inputs = tf.keras.layers.Input(shape=(input_train.shape[1],))
 
 
-    #### Without DropOut
-    #layer_hd.append(tf.layers.Dense(layers[0], activation=tf.nn.relu)(inputs))
-    layer_hd.append(tfp.layers.DenseFlipout(layers[0], activation=tf.nn.relu, kernel_prior_fn=prior, kernel_posterior_tensor_fn=method)(inputs))
-    k=1
-    for i in layers[1:len(layers)+1]:
-        print("current k:",k)
-        label=str(k+1)
-        #layer_hd.append(tfp.layers.DenseFlipout(i, activation=tf.nn.relu, kernel_prior_fn=prior, kernel_posterior_tensor_fn=method)(layer_hd[k-1]))
-        #layer_hd.append(tf.layers.Dense(i, activation=tf.nn.relu)(layer_hd[k-1]))
-        layer_hd.append(tfp.layers.DenseFlipout(i, activation=tf.nn.relu, kernel_prior_fn=prior, kernel_posterior_tensor_fn=method)(layer_hd[k-1]))
-        k = k+1
-    print("total number of hidden layers:",k)
-    last_layer = tfp.layers.DenseFlipout(labels_train.shape[1], activation='softmax', kernel_prior_fn=prior, kernel_posterior_tensor_fn=method)(layer_hd[k-1])
-    #last_layer = tf.layers.Dense(labels_train.shape[1], activation='softmax')(layer_hd[k-1])
-
-    print 'Number of output classes: %i' % (labels_train.shape[1])
-    model = tf.keras.models.Model(inputs=inputs,outputs=last_layer)
-    opt  = tf.train.AdamOptimizer()
-    mymetrics = [metrics.categorical_accuracy]
-    file = h5py.File(outputfolder+'/model_weights.h5', 'r')
-    weight = []
-    for i in range(len(file.keys())):
-        weight.append(file['weight' + str(i)][:])
-    model.set_weights(weight)
-    print model.summary()
-
-    model_history = pd.read_hdf(outputfolder+'/summary.h5')
-
-    predpostfix = ''
-    if use_best_model:
-        predpostfix = '_best'
-    pred_train_all, pred_test_all, pred_val_all, pred_signals_all = load_predictions(outputfolder=outputfolder, filepostfix=predpostfix) #load predictions sampled N times
-
-
-    pred_signals = {}
-    pred_signals_std = {}
-#    for i in range(len(signal_identifiers)):
-#        pred_signals[i] = np.median(pred_signals_all[i],axis=0)
-#        pred_signals_std[i] = np.std(pred_signals_all[i],axis=0)
-
-    pred_train = np.median(pred_train_all,axis=0)
-    pred_test = np.median(pred_test_all,axis=0)
-    pred_val = np.median(pred_val_all,axis=0)
-
-    pred_train_std = np.std(pred_train_all,axis=0)
-    pred_test_std = np.std(pred_test_all,axis=0)
-    pred_val_std = np.std(pred_val_all,axis=0)
- 
-    if not os.path.isdir(plotfolder): os.makedirs(plotfolder)
-    for eventid in range(100):
-        plot_prediction_samples(parameters=parameters,plotfolder=plotfolder+'/ResponseSamples',pred_train_all=pred_train_all,labels_train=labels_train,eventID=eventid)
-
-    log_model_performance(parameters=parameters, model_history=model_history, outputfolder=outputfolder) #OK
-    plot_loss(parameters=parameters, plotfolder=plotfolder, model_history=model_history) #OK
-    plot_accuracy(parameters=parameters, plotfolder=plotfolder, model_history=model_history) #OK
-#    plot_model(model, show_shapes=True, to_file=plotfolder+'/Model.pdf') #OK
-    plot_rocs(parameters=parameters, plotfolder=plotfolder, pred_val=pred_val, labels_val=labels_val, sample_weights_val=sample_weights_val, eventweights_val=eventweights_val, pred_signals=pred_signals, eventweight_signals=eventweight_signals, usesignals=usesignals, use_best_model=use_best_model)
-
-    plot_confusion_matrices(parameters=parameters, plotfolder=plotfolder, pred_train=pred_train, labels_train=labels_train, sample_weights_train=sample_weights_train, eventweights_train=eventweights_train, pred_val=pred_val, labels_val=labels_val, sample_weights_val=sample_weights_val, eventweights_val=eventweights_val, use_best_model=use_best_model)
-
-    #print "--- mean ---"
-    pred_trains, weights_trains, normweights_trains, lumiweights_trains = get_data_dictionaries_onesample(parameters=parameters, eventweights=eventweights_train, sample_weights=sample_weights_train, pred=pred_train, labels=labels_train)
-    pred_vals, weights_vals, normweights_vals, lumiweights_vals = get_data_dictionaries_onesample(parameters=parameters, eventweights=eventweights_val, sample_weights=sample_weights_val, pred=pred_val, labels=labels_val)
-    pred_tests, weights_tests, normweights_tests, lumiweights_tests = get_data_dictionaries_onesample(parameters=parameters, eventweights=eventweights_test, sample_weights=sample_weights_test, pred=pred_test, labels=labels_test)
-
-   # plot_outputs_1d_nodes(parameters=parameters, plotfolder=plotfolder, pred_trains=pred_trains, labels_train=labels_train, weights_trains=weights_trains, lumiweights_trains=lumiweights_trains, normweights_trains=normweights_trains, pred_vals=pred_vals, labels_val=labels_val, weights_vals=weights_vals, lumiweights_vals=lumiweights_vals, normweights_vals=normweights_vals, pred_signals=pred_signals, eventweight_signals=eventweight_signals, normweight_signals=normweight_signals, usesignals=usesignals, use_best_model=use_best_model)
-    #print "--- std ---"
-    pred_trains_std, weights_trains_std, normweights_trains_std, lumiweights_trains_std = get_data_dictionaries_onesample(parameters=parameters, eventweights=eventweights_train, sample_weights=sample_weights_train, pred=pred_train_std, labels=labels_train)
-    pred_vals_std, weights_vals_std, normweights_vals_std, lumiweights_vals_std = get_data_dictionaries_onesample(parameters=parameters, eventweights=eventweights_val, sample_weights=sample_weights_val, pred=pred_val_std, labels=labels_val)
-    pred_tests_std, weights_tests_std, normweights_tests_std, lumiweights_tests_std = get_data_dictionaries_onesample(parameters=parameters, eventweights=eventweights_test, sample_weights=sample_weights_test, pred=pred_test_std, labels=labels_test)
-    # #plot classifier output with error from std of the output
-    # plot_outputs_1d_nodes_with_stderror(parameters=parameters, plotfolder=plotfolder, pred_trains=pred_trains,pred_trains_std=pred_train_std, labels_train=labels_train, weights_trains=weights_trains, lumiweights_trains=lumiweights_trains, normweights_trains=normweights_trains, pred_vals=pred_vals,pred_vals_std=pred_vals_std, labels_val=labels_val, weights_vals=weights_vals, lumiweights_vals=lumiweights_vals, normweights_vals=normweights_vals, pred_signals=pred_signals, pred_signals_std=pred_signals_std,eventweight_signals=eventweight_signals, normweight_signals=normweight_signals, usesignals=usesignals, use_best_model=use_best_model)
-    # #plot std of classifier output
-    #print("aaaaa pred_trains_std[0] = ",pred_trains_std[0])
-    plot_outputs_1d_nodes_std(parameters=parameters, plotfolder=plotfolder, pred_trains=pred_trains,pred_trains_std=pred_trains_std, labels_train=labels_train, weights_trains=weights_trains, lumiweights_trains=lumiweights_trains, normweights_trains=normweights_trains, pred_vals=pred_vals,pred_vals_std=pred_vals_std, labels_val=labels_val, weights_vals=weights_vals, lumiweights_vals=lumiweights_vals, normweights_vals=normweights_vals, pred_signals=pred_signals, pred_signals_std=pred_signals_std,eventweight_signals=eventweight_signals, normweight_signals=normweight_signals, usesignals=usesignals, use_best_model=use_best_model)
-
-    plot_outputs_1d_classes(parameters=parameters, plotfolder=plotfolder, pred_trains=pred_trains, labels_train=labels_train, weights_trains=weights_trains, lumiweights_trains=lumiweights_trains, normweights_trains=normweights_trains, pred_vals=pred_vals, labels_val=labels_val, weights_vals=weights_vals, lumiweights_vals=lumiweights_vals, normweights_vals=normweights_vals, use_best_model=use_best_model)
-
-    # # #FixME:
-    # # #TypeError: ('Not JSON Serializable:', <function _fn at 0x2b8475af1668>)
-    # print("... Store model architecture in PlotBayesianPerformance ...")
-    # #Store model as JSON file for usage in UHH2
-    # arch = model.to_json()
-    # # save the architecture string to a file somehow, the below will work
-    # with open(outputfolder+'/architecture.json', 'w') as arch_file:
-    #     arch_file.write(arch)
-    # # now save the weights as an HDF5 file
-    # model.save_weights(outputfolder+'/weights.h5')
-    print("End of PlotBayesianPerformance")
-   
-def PlotDeepPerformance(parameters, inputfolder, outputfolder, filepostfix, plotfolder, use_best_model=False, usesignals=[0]):
-    print ' ---- Now plotting the performance (PlotDeepPerformance) ---- '
-    gErrorIgnoreLevel = kWarning
-
-    # Get parameters
-    # runonfullsample = parameters['runonfullsample']
-    runonfraction = parameters['runonfraction']
-    fraction = get_fraction(parameters)
-    eqweight = parameters['eqweight']
-    # classes = parameters['classes']
-    tag = dict_to_str(parameters)
-    classtag = get_classes_tag(parameters)
-
-    # Get inputs
-    input_train, input_test, input_val, labels_train, labels_test, labels_val, sample_weights_train, sample_weights_test, sample_weights_val, eventweights_train, eventweights_test, eventweights_val, signals, eventweight_signals, normweight_signals = load_data(parameters, inputfolder=inputfolder, filepostfix=filepostfix)
-    layers=parameters['layers']
-
-    # Get model and its history
-    regrate=parameters['regrate']
-    #sigma=1 #FixME, read https://arxiv.org/pdf/1904.10004.pdf to choose right value   
-    sigma=parameters['sigma']                    
-    prior = lambda x, y, z, w, k: _prior_normal_fn(sigma, x, y, z, w, k)                                                                                                     
-    method = lambda d: d.mean()
-    layer_hd = []
-    batchnorm_hd = []
-    dropout_hd = []
-    inputs = tf.keras.layers.Input(shape=(input_train.shape[1],))
-    layer_hd.append(tf.layers.Dense(layers[0], activation=tf.nn.relu)(inputs))
-    dropout_hd.append(tf.layers.dropout(layer_hd[0], rate=regrate)) #FixME: regmethod might be different
-    #batchnorm_hd.append(tf.layers.batch_normalization(dropout_hd[0]))
-    k=1
-    for i in layers[1:len(layers)+1]:
-        print("current k:",k)
-        label=str(k+1)
-        #layer_hd.append(tfp.layers.DenseFlipout(i, activation=tf.nn.relu)(batchnorm_hd[k-1])) 
-        layer_hd.append(tf.layers.Dense(i, activation=tf.nn.relu)(dropout_hd[k-1]))
-        dropout_hd.append(tf.layers.dropout(layer_hd[k], rate=regrate))
-        #batchnorm_hd.append(tf.layers.batch_normalization(dropout_hd[k]))
-        k = k+1
-    print("total number of hidden layers:",k)
-    #last_layer = tf.layers.Dense(labels_train.shape[1], activation=tf.nn.relu)(dropout_hd[k-1])
-    last_layer = tf.layers.Dense(labels_train.shape[1], activation='softmax')(dropout_hd[k-1])
-    print 'Number of output classes: %i' % (labels_train.shape[1])
-    model = tf.keras.models.Model(inputs=inputs,outputs=last_layer) 
-    file = h5py.File('output/DNN_'+tag+'/model.h5', 'w')
-    weight = []
-    for i in range(len(file.keys())):
-        weight.append(file['weight' + str(i)][:])
-    model.set_weights(weight)                                                                                                                             
-    model.summary()
-
-    
-    with open(outputfolder+'/model_history.pkl', 'r') as f:
-        model_history = pickle.load(f)
-
-
-    predpostfix = ''
-    if use_best_model:
-        predpostfix = '_best'
-    pred_train, pred_test, pred_val, pred_signals = load_predictions(outputfolder=outputfolder, filepostfix=predpostfix)
-
-    if not os.path.isdir(plotfolder): os.makedirs(plotfolder)
-
-    log_model_performance(parameters=parameters, model_history=model_history, outputfolder=outputfolder)
-    plot_loss(parameters=parameters, plotfolder=plotfolder, model_history=model_history)
-    plot_accuracy(parameters=parameters, plotfolder=plotfolder, model_history=model_history)
-    plot_rocs(parameters=parameters, plotfolder=plotfolder, pred_val=pred_val, labels_val=labels_val, sample_weights_val=sample_weights_val, eventweights_val=eventweights_val, pred_signals=pred_signals, eventweight_signals=eventweight_signals, usesignals=usesignals, use_best_model=use_best_model)
-    plot_model(model, show_shapes=True, to_file=plotfolder+'/Model.pdf')
-    plot_confusion_matrices(parameters=parameters, plotfolder=plotfolder, pred_train=pred_train, labels_train=labels_train, sample_weights_train=sample_weights_train, eventweights_train=eventweights_train, pred_val=pred_val, labels_val=labels_val, sample_weights_val=sample_weights_val, eventweights_val=eventweights_val, use_best_model=use_best_model)
-
-
-    pred_trains, weights_trains, normweights_trains, lumiweights_trains, pred_vals, weights_vals, normweights_vals, lumiweights_vals, pred_tests, weights_tests, normweights_tests, lumiweights_tests = get_data_dictionaries(parameters=parameters, eventweights_train=eventweights_train, sample_weights_train=sample_weights_train, pred_train=pred_train, labels_train=labels_train, eventweights_val=eventweights_val, sample_weights_val=sample_weights_val, pred_val=pred_val, labels_val=labels_val, eventweights_test=eventweights_test, sample_weights_test=sample_weights_test, pred_test=pred_test, labels_test=labels_test)
-    plot_outputs_1d_nodes(parameters=parameters, plotfolder=plotfolder, pred_trains=pred_trains, labels_train=labels_train, weights_trains=weights_trains, lumiweights_trains=lumiweights_trains, normweights_trains=normweights_trains, pred_vals=pred_vals, labels_val=labels_val, weights_vals=weights_vals, lumiweights_vals=lumiweights_vals, normweights_vals=normweights_vals, pred_signals=pred_signals, eventweight_signals=eventweight_signals, normweight_signals=normweight_signals, usesignals=usesignals, use_best_model=use_best_model)
-
-    plot_outputs_1d_classes(parameters=parameters, plotfolder=plotfolder, pred_trains=pred_trains, labels_train=labels_train, weights_trains=weights_trains, lumiweights_trains=lumiweights_trains, normweights_trains=normweights_trains, pred_vals=pred_vals, labels_val=labels_val, weights_vals=weights_vals, lumiweights_vals=lumiweights_vals, normweights_vals=normweights_vals, use_best_model=use_best_model)
-    
 
 
 
@@ -379,6 +189,9 @@ def PlotInputs(parameters, inputfolder, filepostfix, plotfolder):
     for varname in variable_names:
         xmax = max([max(input_train_classes[i][:,idx]) for i in range(len(input_train_classes))])
         xmin = min([min(input_train_classes[i][:,idx]) for i in range(len(input_train_classes))])
+        print 'test!'
+        print xmin
+        print xmax
         if xmax == xmin: xmax = xmin + 1.
         xmin = min([0,xmin])
         binwidth = (xmax - xmin) / float(nbins)

@@ -42,6 +42,7 @@ def GetInputs(parameters):
     inputdir = parameters['inputdir']
     systvar = parameters['systvar']
     inputsubdir = parameters['inputsubdir'] 
+    bkgweight = parameters['bkgweight']
     #path to input files: inputdir + systvar + inputsubdir
 
     if os.path.isdir(inputdir+inputsubdir+systvar+'/'+prepreprocess+'/'+ classtag):
@@ -55,7 +56,7 @@ def GetInputs(parameters):
         os.makedirs(inputdir+inputsubdir+systvar+'/'+prepreprocess+'/'+ classtag)
 
     #maxfiles_per_sample = {'TTbar': -1, 'SingleTop': -1, 'WJets': -1, 'DYJets': -1, 'HHtoWWbbSemiLeptonic_SM': -1}
-    maxfiles_per_sample = {'TTbar': -1, 'ST': -1, 'WJets': -1, 'DYJets': -1, 'HH_SM': -1}
+    maxfiles_per_sample = {'TTbar': -1, 'ST': -1, 'WJets': -1, 'DYJets': -1, 'HH_SM': -1, 'QCDMu': -1, 'QCDEle': -1, 'HH_kl0': -1, 'HH_kl1': -1, 'HH_kl2p45': -1, 'HH_kl5': -1}
 
     # Find initial file for each class
 #    inputfiles = os.listdir('input/MLInput')
@@ -122,12 +123,14 @@ def GetInputs(parameters):
     eventweight_total = np.concatenate((tuple([all_eventweights[i] for i in range(len(all_eventweights))])))
 
     # Now create matrix with labels, it's zero everywhere, only the column corresponding to the class the example belongs to has ones
+    
     labels_total = np.zeros((label_concatenated.shape[0], len(classes)))
     for i in range(label_concatenated.shape[0]):
         label = label_concatenated[i]
         labels_total[i,label] = 1
     labels_total = labels_total.astype(np.int8)
 
+    
     # Treat inf entries
     input_total[input_total == inf]    = 999999.
     input_total[input_total == -inf]   = -999999.
@@ -135,6 +138,7 @@ def GetInputs(parameters):
 
     # print input_total[labels_total[:,2]==1][0]
 
+    ### why do we need this shuffle and the MixInputs function?
     shuffle = np.random.permutation(np.size(input_total, axis=0))
     input_total       = input_total[shuffle]
     labels_total      = labels_total[shuffle]
@@ -165,9 +169,12 @@ def GetInputs(parameters):
     takeupto_test  = 0
     takeupto_val   = 0
     sumweights_classes = {}
+    sumMC_classes = {} # sum of all MC events
     # initialize this dict
+    print labels_total.shape
     for i in range(labels_total.shape[1]):
         sumweights_classes[i] = 0.
+        sumMC_classes[i] = 0.
 
     for i in range(len(eventweight_total)):
         currentsum += eventweight_total[i,0]
@@ -182,6 +189,10 @@ def GetInputs(parameters):
         #find out which class this event belongs to
         thisclass = label_concatenated[i]
         sumweights_classes[thisclass] += eventweight_total[i,0]
+        #### just counting #MC events (not yet used)
+        sumMC_classes[thisclass] += 1
+
+
 
     print 'takeupto_(train/test/val): ' , takeupto_train, takeupto_test, takeupto_val
     input_train = input_total[:takeupto_train]
@@ -209,16 +220,25 @@ def GetInputs(parameters):
         weight = 1
         if sumweights_classes[i] != 0: weight = minsum/sumweights_classes[i]
         class_weights[i] = weight
+        ##### change weighting between S and B
+        if i!=0:
+            class_weights[i] *= bkgweight
         print 'weight class i ', i, weight
+        print 'modified:      ', i, class_weights[i]
 
     sample_weights_train_list = []
     sample_weights_test_list = []
     sample_weights_val_list = []
+    
+    #print 'TESTTESTTESTTEST'
     for i in range(len(labels_train[:,0])):
         #loop over training examples i
         for j in range(len(labels_train[i,:])):
             #loop over possible classes j
             if labels_train[i,j] == 1:
+                #print 'class: ', j
+                #print 'class_weights: ', class_weights[j]
+                #print 'eventweight: ', eventweight_train[j]
                 thisweight = class_weights[j] * eventweight_train[i]
                 sample_weights_train_list.append(thisweight)
     for i in range(len(labels_test[:,0])):
@@ -231,7 +251,7 @@ def GetInputs(parameters):
             if labels_val[i,j] == 1:
                 thisweight = class_weights[j] * eventweight_val[i]
                 sample_weights_val_list.append(thisweight)
-
+    
 
     # Test: sum val-sampleweights for each class, should be the same value for all classes
     sums = {0:0., 1:0., 2:0., 3:0., 4:0.}
@@ -322,18 +342,16 @@ def GetInputs(parameters):
     np.save(output_path+'/labels_'+fraction+'_test.npy'  , labels_test)
     np.save(output_path+'/labels_'+fraction+'_val.npy'   , labels_val)
 
-    np.save(output_path+'/sample_weights_'+fraction+'_train.npy', sample_weights_train)
+    ### quick hack: scaling sample_weights up by a factor 1000
+    ### more elegant way would be to not normalize samples to cross section (but I'm not seeing where this happens)
+
+    np.save(output_path+'/sample_weights_'+fraction+'_train.npy', 1000*sample_weights_train)
     np.save(output_path+'/eventweights_'+fraction+'_train.npy', eventweight_train)
-    np.save(output_path+'/sample_weights_'+fraction+'_test.npy', sample_weights_test)
+    np.save(output_path+'/sample_weights_'+fraction+'_test.npy', 1000*sample_weights_test)
     np.save(output_path+'/eventweights_'+fraction+'_test.npy', eventweight_test)
-    np.save(output_path+'/sample_weights_'+fraction+'_val.npy', sample_weights_val)
+    np.save(output_path+'/sample_weights_'+fraction+'_val.npy', 1000*sample_weights_val)
     np.save(output_path+'/eventweights_'+fraction+'_val.npy', eventweight_val)
 
-
-
-#    for i in all_signals.keys():
-#        np.save(output_path+'/'+signal_identifiers[i]+'.npy', all_signals[i])
-#        np.save(output_path+'/'+signal_identifiers[i]+'_eventweight.npy', all_signal_eventweights[i])
 
 
 def MixInputs(parameters, outputfolder, variations, filepostfix):
@@ -360,6 +378,7 @@ def MixInputs(parameters, outputfolder, variations, filepostfix):
         input_train, input_test, input_val, labels_train, labels_test, labels_val, sample_weights_train, sample_weights_test, sample_weights_val, eventweights_train, eventweights_test, eventweights_val, signals, eventweight_signals, normweight_signals = load_data(parameters, inputfolder=inputfolder, filepostfix=filepostfix)
         input_train_shape1 = input_train.shape[1]
         labels_train_shape_1 = labels_train.shape[1]
+
         print 'input_.shape: ',input_train.shape, input_test.shape, input_val.shape
         input_sample = np.concatenate((input_train,input_test,input_val), axis=0)
         labels_sample = np.concatenate((labels_train,labels_test,labels_val), axis=0)
@@ -448,6 +467,8 @@ def SplitInputs(parameters, outputfolder, filepostfix):
     np.save(outputfolder+'/sample_weights_'+fraction+'_test.npy', test_set[:,-1])
     print('Sample Weights test stored!')
 
+    #for i in range(len(train_set[:,-1])):
+    #    print 'xxxxxxx Sample_weights_train: ', train_set[i,-1]
 
     print("Inputs are split into train/test/val datasets")
 

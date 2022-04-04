@@ -59,13 +59,13 @@ def dict_to_str(parameters):
 
     tag = tag + '__regmethod_' + parameters['regmethod']
     tag = tag + '__regrate_' + '{num:06d}'.format(num=int(parameters['regrate']*100000.))
-    tag = tag + '__batchnorm_' + str(parameters['batchnorm'])
+    #tag = tag + '__batchnorm_' + str(parameters['batchnorm'])
     tag = tag + '__epochs_' + str(parameters['epochs'])
-    tag = tag + '__learningrate_' + '{num:06d}'.format(num=int(parameters['learningrate']*100000.))
-    tag = tag + '__runonfraction_' + '{num:03d}'.format(num=int(parameters['runonfraction']*100.))
-    tag = tag + '__eqweight_' + str(parameters['eqweight'])
-    tag = tag + '__preprocess_' + str(parameters['preprocess'])
-    tag = tag + '__priorSigma_' + '{num:03d}'.format(num=int(parameters['sigma']*100.))
+    tag = tag + '__LR_' + '{num:06d}'.format(num=int(parameters['learningrate']*100000.))
+    #tag = tag + '__fraction_' + '{num:03d}'.format(num=int(parameters['runonfraction']*100.))
+    #tag = tag + '__eqweight_' + str(parameters['eqweight'])
+    #tag = tag + '__preprocess_' + str(parameters['preprocess'])
+    #tag = tag + '__priorSigma_' + '{num:03d}'.format(num=int(parameters['sigma']*100.))
     #print("------ Sigma in TAG: ",parameters['sigma'])
     #if len(tag.split('__')) != len(parameters): raise ValueError('in dict_to_str: Number of parameters given in the dictionary does no longer match the prescription how to build the tag out of it.')
     return tag
@@ -484,14 +484,16 @@ def plot_confusion_matrix(cm, classes,
     if axis == '' and normalize: raise ValueError('no normalization axis was given but normalization was switched on!')
 
     plt.imshow(cm, interpolation='none', cmap=cmap)
-    plt.title(title)
-    plt.colorbar()
+    plt.title(title, fontsize=15)
+    cbar = plt.colorbar()
+    for t in cbar.ax.get_yticklabels():
+        t.set_fontsize(12)
     tick_marks = np.arange(len(classes))
     listofclasses = []
     for key in classes.keys():
         listofclasses.append(classes[key])
-    plt.xticks(tick_marks, listofclasses, rotation=45)
-    plt.yticks(tick_marks, listofclasses)
+    plt.xticks(tick_marks, listofclasses, rotation=15, fontsize=13)
+    plt.yticks(tick_marks, listofclasses, fontsize=13)
 
     # fmt = '.2f' if normalize else 'd'
     fmt = '.2f'
@@ -499,10 +501,11 @@ def plot_confusion_matrix(cm, classes,
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         plt.text(j, i, format(cm[i, j], fmt),
                  horizontalalignment="center",
-                 color="white" if cm[i, j] > thresh else "black")
+                 color="white" if cm[i, j] > thresh else "black",
+                 fontsize=13)
 
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
+    plt.ylabel('True label', fontsize=15)
+    plt.xlabel('Predicted label', fontsize=15)
     plt.tight_layout()
 
 def log_model_performance(parameters, model_history, outputfolder):
@@ -547,8 +550,10 @@ def log_model_performance(parameters, model_history, outputfolder):
         print "Validation loss in point of closest approach: %f, reached after %i epochs" % (bestloss_val, bestx)
 
 
-    acc_train = model_history['categorical_accuracy']
-    acc_val = model_history['val_categorical_accuracy']
+    #acc_train = model_history['categorical_accuracy']
+    #acc_val = model_history['val_categorical_accuracy']
+    acc_train = model_history['weighted_categorical_accuracy']
+    acc_val = model_history['val_weighted_categorical_accuracy']
     tag = dict_to_str(parameters)
     with open(outputfolder+'/ModelPerformance.txt', 'w') as f:
         f.write('\n\n====================\n')
@@ -580,19 +585,20 @@ def plot_rocs(parameters, plotfolder, pred_val, labels_val, sample_weights_val, 
 
     plt.clf()
     fig = plt.figure()
-    plt.xticks(np.arange(0.1,1.1,0.1))
+    plt.xticks(np.arange(0.1,1.1,0.1), fontsize=12)
+    plt.yticks(fontsize=12)
     plt.grid(True, which='both')
     for i in range(len(FalsePositiveRates)):
         #plt.semilogy(TruePositiveRates[i], FalsePositiveRates[i], label=classtitles[i] + ', AUC: '+str(round(aucs[i],3)), color=colorstr[i])
         plt.plot(FalsePositiveRates[i], TruePositiveRates[i], label=classtitles[i] + ', AUC: '+str(round(aucs[i],3)), color=colorstr[i])
     plt.plot([0, 0], [1, 1], color='k', linestyle='-', linewidth=1)
-    plt.legend(loc='upper left')
+    plt.legend(loc='upper left', fontsize=13)
     #plt.ylim([0.0001, 1.05])
     plt.ylim([0.0, 1.0])
     #plt.xlabel('Selection efficiency')
     #plt.ylabel('Background efficiency')
-    plt.ylabel('Selection efficiency')
-    plt.xlabel('Background efficiency')
+    plt.ylabel('Selection efficiency', fontsize=15)
+    plt.xlabel('Background efficiency', fontsize=15)
     title = 'ROC_val_eqweight'
     if use_best_model: title += '_best'
     title += '.pdf'
@@ -606,11 +612,11 @@ def plot_rocs(parameters, plotfolder, pred_val, labels_val, sample_weights_val, 
     plt.legend(loc='best')
     plt.ylim([0., 1.05])
     plt.xlim([0., 1.])
-    plt.xticks(np.arange(0.,1.1,0.1))
-    plt.yticks(np.arange(0.,1.1,0.1))
+    plt.xticks(np.arange(0.,1.1,0.1), fontsize=12)
+    plt.yticks(np.arange(0.,1.1,0.1), fontsize=12)
     plt.grid(True, which='both')
-    plt.xlabel('Selection efficiency')
-    plt.ylabel('Purity')
+    plt.xlabel('Selection efficiency', fontsize=15)
+    plt.ylabel('Purity', fontsize=15)
     title = 'EffVsPur_val_eqweight'
     if use_best_model: title += '_best'
     title += '.pdf'
@@ -700,15 +706,17 @@ def plot_rocs(parameters, plotfolder, pred_val, labels_val, sample_weights_val, 
         # Now just plot all 4 curves (equallyweighted)
         plt.clf()
         fig = plt.figure()
-        plt.xticks(np.arange(0.1,1.1,0.1))
+        plt.xticks(np.arange(0.1,1.1,0.1), fontsize=12)
+        plt.yticks(fontsize=12)
         plt.grid(True, which='both')
         for i in fprs_eq.keys():
             plt.semilogy(tprs_eq[i][0], fprs_eq[i][0], label='Bkg: ' + classtitles[i] + ', AUC: '+str(round(aucss_eq[i][0],3)), color=colorstr[i])
-        plt.legend(loc='upper left')
+        plt.legend(loc='upper left', fontsize=13)
         plt.ylim([0.0001, 1.05])
 #        plt.ylim([1e-9, 1.05])
-        plt.xlabel(classtitles[cl]+' selection efficiency')
-        plt.ylabel('Class background efficiency')
+        plt.xlabel(classtitles[cl]+' selection efficiency', fontsize=15)
+        plt.ylabel('Class background efficiency', fontsize=15)
+        plt.tight_layout()
         title = 'ROC_val_class'+str(cl)+'_eqweight'
         if use_best_model: title += '_best'
         title += '.pdf'
@@ -739,7 +747,7 @@ def plot_rocs(parameters, plotfolder, pred_val, labels_val, sample_weights_val, 
         plt.xticks(np.arange(0.1,1.1,0.1))
         plt.grid(True, which='both')
         for i in fprs_lum.keys():
-            plt.semilogy(tprs_lum[i][0], fprs_lum[i][0], label='Bkg: '+classtitles[i] + ', AUC: '+str(round(aucss_lum[i][0],3)), color=colorstr[i])
+            plt.semilogy(tprs_lum[i][0], fprs_lum[i][0], label='Bkg: '+classtitles[i] + ', AUC: {auc:.3f}'.format(auc=aucss_lum[i][0]), color=colorstr[i])
         if do_sig:
             for sigidx in range(len(usesignals)):
                 plt.semilogy(tprs_lum[0 if cl > 0 else 1][0][indices], eff_signals_lum[usesignals[sigidx]], label='Signal (%s), AUC: %s' % (signalmasses[usesignals[sigidx]], str(round(auc_signals_lum[usesignals[sigidx]],3))), color='k', linestyle=signal_linestyles[sigidx])
@@ -793,18 +801,22 @@ def plot_loss(parameters, plotfolder, model_history):
     #plt.plot(fitx, fitfunc(fitx, *postfitpars_train), label="Fit (training set)") #FixME for BNN
     #plt.plot(fitx, fitfunc(fitx, *postfitpars_val), label="Fit (validation set)") #FixME for BNN
 
-    plt.legend(loc='upper right')
+    plt.legend(loc='upper right', fontsize=14)
     #plt.ylim([0.1, 0.25])
     #plt.ylim([0.01,100])
-    plt.ylim([0.05,0.2])
+    plt.ylim([0.05,0.1])
     #plt.yscale("log")
     if eqweight:
 #        plt.ylim([0.01, 0.06])
         #plt.ylim([0.1,100])
-        plt.ylim([0.001,0.1])
-        plt.yscale("log")
-    plt.ylabel('Loss')
-    plt.xlabel('Number of training epochs')
+        #plt.ylim([0.02,0.1])
+        plt.ylim([0.09,0.13])
+        #plt.yscale("log")
+    plt.ylabel('Loss', fontsize=16)
+    plt.xlabel('Number of training epochs', fontsize=16)
+    plt.xticks(fontsize=13)
+    plt.yticks(fontsize=13)
+    plt.tight_layout()
     fig.savefig(plotfolder+'/Loss.pdf')
     plt.close()
 
@@ -838,16 +850,57 @@ def plot_accuracy(parameters, plotfolder, model_history):
     plt.clf()
     fig = plt.figure()
     plt.grid()
-    x = range(len(model_history['categorical_accuracy'])+1)
+    x = range(len(model_history['weighted_categorical_accuracy'])+1)
+    #x = range(len(model_history['categorical_accuracy'])+1)
     x = x[1:]
-    plt.plot(x, model_history['categorical_accuracy'], label = 'Training set')
-    plt.plot(x, model_history['val_categorical_accuracy'], label = 'Validation set')
-    plt.legend(loc='lower right')
-    plt.ylim([0., 1.05])
-    plt.ylabel('Prediction accuracy')
-    plt.xlabel('Number of training epochs')
+    #plt.plot(x, model_history['categorical_accuracy'], label = 'Training set')
+    plt.plot(x, model_history['weighted_categorical_accuracy'], label = 'Training set')
+    #plt.plot(x, model_history['val_categorical_accuracy'], label = 'Validation set')
+    plt.plot(x, model_history['val_weighted_categorical_accuracy'], label = 'Validation set')
+    plt.legend(loc='lower right', fontsize=14)
+    #plt.ylim([0., 1.05])
+    plt.ylim([0.035, 0.06]) # using weighted_accuracy the y axis now has arbitrary units
+    plt.ylabel('Prediction accuracy', fontsize=16)
+    plt.xlabel('Number of training epochs', fontsize=16)
+    plt.xticks(fontsize=13)
+    plt.yticks(fontsize=13)
+    plt.tight_layout()
     fig.savefig(plotfolder+'/Accuracy.pdf')
 
+
+def get_input_weights(parameters, plotfolder, model, variable_names):
+    print 'Get weights of input layer and sort them by weight sum'
+
+    first_layer = model.layers[0]
+    weights = first_layer.get_weights()[0]
+    print len(weights)
+    my_dict={}
+    for out_weights, variable in zip(weights, variable_names):
+        w_sum = np.sum(np.abs(out_weights))
+        my_dict[variable] = w_sum
+
+    rank_path = plotfolder + "/first_layer_weight_sums.csv"
+    with open(rank_path, "w") as f:
+        f.write("variable,weight_sum\n")
+        for var, w_sum in sorted(my_dict.items(), key=lambda x: x[1], reverse=True):
+            print var+': '+str(w_sum)
+            f.write("{},{}\n".format(var,w_sum))
+
+            
+
+'''
+    rank_path = plotfolder + "/first_layer_weight_sums.csv"
+    with open(rank_path, "w") as f:
+        f.write("variable,weight_sum\n")
+        for out_weights, variable in zip(weights, variable_names):
+            #print len(out_weights)
+            w_sum = np.sum(np.abs(out_weights))
+            #print 'for variable' +variable+ 'the weight sum is' +w_sum
+            f.write("{},{}\n".format(variable,w_sum))
+            print variable+','+str(w_sum)
+'''
+
+        
 
 def plot_weight_updates(parameters, model, input_val):
     print 'Starting to plot weights'
@@ -954,8 +1007,8 @@ def plot_confusion_matrices(parameters, plotfolder, pred_train, labels_train, sa
 
     plt.clf()
     fig = plt.figure()
-    plot_confusion_matrix(conf_matrix_val, classes=classtitles, title='Confusion matrix for validation set, without normalization')
-    title = 'Confusion_matrix_val'
+    plot_confusion_matrix(conf_matrix_val, classes=classtitles, title='Confusion matrix for test set, without normalization') #validation -> test
+    title = 'Confusion_matrix_test'
     if use_best_model: title += '_best'
     title += '.pdf'
     fig.savefig(plotfolder+'/'+title)
@@ -963,8 +1016,8 @@ def plot_confusion_matrices(parameters, plotfolder, pred_train, labels_train, sa
 
     plt.clf()
     fig = plt.figure()
-    plot_confusion_matrix(conf_matrix_val, classes=classtitles, normalize=True, axis='x', title='Confusion matrix for validation set, rows normalized')
-    title = 'Confusion_matrix_val_normx'
+    plot_confusion_matrix(conf_matrix_val, classes=classtitles, normalize=True, axis='x', title='Confusion matrix for test set, rows normalized') #validation -> test
+    title = 'Confusion_matrix_test_normx'
     if use_best_model: title += '_best'
     title += '.pdf'
     fig.savefig(plotfolder+'/'+title)
@@ -972,8 +1025,8 @@ def plot_confusion_matrices(parameters, plotfolder, pred_train, labels_train, sa
 
     plt.clf()
     fig = plt.figure()
-    plot_confusion_matrix(conf_matrix_val, classes=classtitles, normalize=True, axis='y', title='Confusion matrix for validation set, columns normalized')
-    title = 'Confusion_matrix_val_normy'
+    plot_confusion_matrix(conf_matrix_val, classes=classtitles, normalize=True, axis='y', title='Confusion matrix for test set, columns normalized') #validation -> test
+    title = 'Confusion_matrix_test_normy'
     if use_best_model: title += '_best'
     title += '.pdf'
     fig.savefig(plotfolder+'/'+title)
@@ -1079,9 +1132,13 @@ def plot_outputs_1d_nodes(parameters, plotfolder, pred_trains, labels_train, wei
             yerrs[i] = y_vals[i]**0.5
             y_vals_norm[i] = y_vals_norm[i] * normweights_vals[i][cl][0]
             yerrs_norm[i] = yerrs_norm[i] * normweights_vals[i][cl][0]
+
+            # !!! remove errorbars for now !!!
+            yerrs_norm[i] = 0
+            yerrs[i] = 0
 #            print("yerrs_norm[i].shape",yerrs[i].shape)
 #            print "yerrs_norm[i]",yerrs_norm[i]
-
+   
 
         if do_sig:
             for key in pred_signals.keys():
@@ -1091,19 +1148,25 @@ def plot_outputs_1d_nodes(parameters, plotfolder, pred_trains, labels_train, wei
         plt.clf()
         fig = plt.figure()
         classtitle_to_use = ''
+        plt.hist([], histtype='step', label='Training sample', color='black')
+        plt.scatter([],[], label='Test sample', marker='o', color='black')
         for i in range(labels_train.shape[1]):
-            plt.hist(pred_trains[i][cl], weights=weights_trains[i][cl]*normweights_trains[i][cl], bins=nbins, histtype='step', label='Training sample, ' + classtitles[i], color=colorstr[i])
-            plt.errorbar(bin_centers[i], y_vals_norm[i], yerr=yerrs_norm[i], fmt = '.', drawstyle = 'steps-mid', linestyle=' ', label='Validation sample, ' + classtitles[i], color=colorstr[i])
+            plt.hist(pred_trains[i][cl], weights=weights_trains[i][cl]*normweights_trains[i][cl], bins=nbins, histtype='step', color=colorstr[i]) #label='Training sample, ' + classtitles[i], 
+            plt.errorbar(bin_centers[i], y_vals_norm[i], yerr=yerrs_norm[i], fmt = '.', drawstyle = 'steps-mid', linestyle=' ', color=colorstr[i]) # validation -> test  #label='Test sample, ' + classtitles[i],
+            plt.scatter([],[], label=classtitles[i], marker='s', color=colorstr[i])
             if i == cl:
                 classtitle_to_use = classtitles[i]
         if do_sig:
             for sigidx in range(len(usesignals)):
                 plt.hist(pred_signals[usesignals[sigidx]][:,cl], weights=eventweight_signals[usesignals[sigidx]]*normweight_signals[usesignals[sigidx]], bins=nbins, histtype='step', label='Signal (%s)' % signalmasses[usesignals[sigidx]], color='k', linestyle=signal_linestyles[sigidx])
-        plt.legend(loc='best', prop={'size': 8})
+        plt.legend(loc='best', fontsize=12)#prop={'size': 8}
         plt.yscale('log')
         plt.xlim([-0.05, 1.05])
-        plt.xlabel('Classifier output for node '+classtitle_to_use)
-        plt.ylabel('Normalized number of events / bin')
+        plt.xlabel('Classifier output for node '+classtitle_to_use, fontsize=15)
+        plt.ylabel('Normalized number of events / bin', fontsize=15)
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
         title = 'Distribution_node'+str(cl)+'_norm'
         if use_best_model: title += '_best'
         title += '.pdf'
@@ -1114,7 +1177,7 @@ def plot_outputs_1d_nodes(parameters, plotfolder, pred_trains, labels_train, wei
         classtitle_to_use = ''
         for i in range(labels_train.shape[1]):
             plt.hist(pred_trains[i][cl], weights=weights_trains[i][cl], bins=nbins, histtype='step', label='Training sample, ' + classtitles[i], color=colorstr[i])
-            #plt.errorbar(bin_centers[i], y_vals[i], yerr=yerrs[i], fmt = '.', drawstyle = 'steps-mid', linestyle=' ', label='Validation sample, ' + classtitles[i], color=colorstr[i])
+            plt.errorbar(bin_centers[i], y_vals[i], yerr=yerrs[i], fmt = '.', drawstyle = 'steps-mid', linestyle=' ', label='Test sample, ' + classtitles[i], color=colorstr[i]) # validation -> test
             # print i, y_vals[i]
             if i == cl:
                 classtitle_to_use = classtitles[i]
@@ -1373,12 +1436,16 @@ def plot_outputs_1d_classes(parameters, plotfolder, pred_trains, labels_train, w
             y_vals_norm[i] = y_vals_norm[i] * normweights_vals[cl][i][0]
             yerrs_norm[i] = yerrs_norm[i] * normweights_vals[cl][i][0]
 
+            # !!! remove errorbars for now !!!
+            yerrs_norm[i] = 0
+            yerrs[i] = 0
         plt.clf()
         fig = plt.figure()
         classtitle_to_use = ''
         for i in range(labels_train.shape[1]):
             plt.hist(pred_trains[cl][i], weights=weights_trains[cl][i]*normweights_trains[cl][i], bins=nbins, histtype='step', label='Training sample, ' + classtitles[i], color=colorstr[i])
-            plt.errorbar(bin_centers[i], y_vals_norm[i], yerr=yerrs_norm[i], fmt = '.', drawstyle = 'steps-mid', linestyle=' ', label='Validation sample, ' + classtitles[i], color=colorstr[i])
+            
+            plt.errorbar(bin_centers[i], y_vals_norm[i], yerr=yerrs_norm[i], fmt = '.', drawstyle = 'steps-mid', linestyle=' ', label='Test sample, ' + classtitles[i], color=colorstr[i]) #Validation -> Test
             if i == cl:
                 classtitle_to_use = classtitles[i]
 
@@ -1396,7 +1463,7 @@ def plot_outputs_1d_classes(parameters, plotfolder, pred_trains, labels_train, w
         fig = plt.figure()
         classtitle_to_use = ''
         for i in range(labels_train.shape[1]):
-            plt.errorbar(bin_centers[i], y_vals[i], yerr=yerrs[i], fmt = '.', drawstyle = 'steps-mid', linestyle=' ', label='Validation sample, ' + classtitles[i], color=colorstr[i])
+            plt.errorbar(bin_centers[i], y_vals[i], yerr=yerrs[i], fmt = '.', drawstyle = 'steps-mid', linestyle=' ', label='Test sample, ' + classtitles[i], color=colorstr[i]) # Validation -> test
             if i == cl:
                 classtitle_to_use = classtitles[i]
 
@@ -1412,413 +1479,6 @@ def plot_outputs_1d_classes(parameters, plotfolder, pred_trains, labels_train, w
         plt.close()
 
 
-#def cut_iteratively(parameters, outputfolder, pred_val, labels_val, eventweights_val, pred_signals=None, eventweight_signals=None, usesignals=[0]):
-#
-#    print 'Starting to cut iteratively'
-#    tag = dict_to_str(parameters)
-#    classtitles = get_classtitles(parameters)
-#    classes = parameters['classes']
-#    best_cuts = []
-#
-#    FalsePositiveRates, TruePositiveRates, Thresholds, aucs, SignalPuritys = get_fpr_tpr_thr_auc(parameters=parameters, pred_val=pred_val, labels_val=labels_val, weights_val=eventweights_val)
-#    sign_max = {}
-#    thr_cuts = {}
-#    n_signals_total = {}
-#    for key in pred_signals.keys():
-#        n_signals_total[key] = eventweight_signals[key].sum()
-#    for cl in range(len(classes)):
-#        #find all weights belonging or not belonging to this class
-#        nsig = eventweights_val[labels_val[:,cl] == 1].sum()
-#        nbkg = eventweights_val[labels_val[:,cl] == 0].sum()
-#
-#
-#        #find the cut maximizing the significance of this class
-#        sign_max_this = 0.
-#        best_idx = -1
-#        eff_signals = {}
-#        for key in pred_signals.keys():
-#            eff_signals[key] = 0.
-#        for idx in range(len(Thresholds[cl])):
-#            nsig_sel = TruePositiveRates[cl][idx] * nsig
-#            nbkg_sel = FalsePositiveRates[cl][idx] * nbkg
-#            if idx%(len(Thresholds[cl])/10000) == 0:
-#                for key in pred_signals.keys():
-#                    eff_signals[key] = eventweight_signals[key][pred_signals[key][:,cl] > Thresholds[cl][idx]].sum() / float(n_signals_total[key])
-#                # consider cut only if it leaves 90% of the signals monitored
-#                should_i_stop = False
-#                for sigidx in range(len(usesignals)):
-#                    if eff_signals[usesignals[sigidx]] > 0.1:
-#                        should_i_stop = True
-#                if should_i_stop:
-#                    break
-#            significance = 0.
-#            if nsig_sel + nbkg_sel > 0:
-#                significance = nsig_sel / (math.sqrt(nsig_sel + nbkg_sel))
-#            if significance > sign_max_this:
-#                sign_max_this = significance
-#                best_idx = idx
-#        sign_max[cl] = sign_max_this
-#        thr_cuts[cl] = Thresholds[cl][best_idx]
-#        print 'best cut for class %s, output > %f, would have a significance of %f, keeping %f out of %f signal events (%f%%), while letting in %f out of %f background events (%f%%). Purity: %f' % (classtitles[cl], Thresholds[cl][best_idx], sign_max_this, TruePositiveRates[cl][best_idx] * nsig, nsig, TruePositiveRates[cl][best_idx]*100., FalsePositiveRates[cl][best_idx] * nbkg, nbkg, FalsePositiveRates[cl][best_idx]*100., TruePositiveRates[cl][best_idx] * nsig / (TruePositiveRates[cl][best_idx] * nsig + FalsePositiveRates[cl][best_idx] * nbkg))
-#
-#
-#    #cut on distribution with highest significance
-#    highest_sign = 0.
-#    best_idx = -1
-#    for cl in sign_max.keys():
-#        if sign_max[cl] > highest_sign:
-#            highest_sign = sign_max[cl]
-#            best_idx = cl
-#    # now 'best_idx' is the class we cut on
-#    best_cuts.append({best_idx: thr_cuts[best_idx]})
-#    mask = [pred_val[:,best_idx] > thr_cuts[best_idx]]
-#    pred_val = pred_val[mask]
-#    labels_val = labels_val[mask]
-#    eventweights_val = eventweights_val[mask]
-#    return best_cuts
-#
-#
-#
-#def plot_cuts(parameters, outputfolder, plotfolder, best_cuts, pred_vals, labels_val, lumiweights_vals, pred_signals=None, eventweight_signals=None, usesignals=[0], use_best_model=False):
-#
-#    print 'plotting the cuts'
-#    do_sig = (pred_signals is not None) and (eventweight_signals is not None)
-#    tag = dict_to_str(parameters)
-#    classtitles = get_classtitles(parameters)
-#    pred_vals_pass = deepcopy(pred_vals)
-#    pred_vals_fail = deepcopy(pred_vals)
-#    pred_signals_pass = deepcopy(pred_signals)
-#    pred_signals_fail = deepcopy(pred_signals)
-#    lumiweights_vals_pass = deepcopy(lumiweights_vals)
-#    lumiweights_vals_fail = deepcopy(lumiweights_vals)
-#    eventweight_signals_pass = deepcopy(eventweight_signals)
-#    eventweight_signals_fail = deepcopy(eventweight_signals)
-#
-#    for k in range(len(best_cuts)):
-#        # k is the number of consecutive cuts applied (k-1 have already been applied, only applying cut no. k in this turn)
-#        if k > 0: continue
-#
-#        cut = best_cuts[k]
-#        cutclass = cut.keys()[0]
-#
-#
-#        n_total = {}
-#        n_pass = {}
-#        n_fail = {}
-#        sum_pass = 0.
-#        sum_fail = 0.
-#        sum_total = 0.
-#        for j in range(len(pred_vals)):
-#            # j is the true class
-#
-#            # this means: we want to cut on the output of the true class 'j' predicted by node 'cutclass', because each cut always acts on exactly one node
-#            # this cut is applied to events having failed earlier cuts -> events that are still in the game
-#            mask_pass = pred_vals_fail[j][cutclass] > cut[cutclass]
-#            mask_fail = pred_vals_fail[j][cutclass] <= cut[cutclass]
-#            for m in range(len(pred_vals[j])):
-#                # m is the output node we want to cut on
-#                # irrespective of the node we are cutting on, a given true class 'j' must always have the same number of events in each node
-#                # this cut is applied to events having failed earlier cuts -> events that are still in the game
-#
-#                pred_vals_pass[j][m] = deepcopy(pred_vals_fail[j][m][mask_pass])
-#                lumiweights_vals_pass[j][m] = deepcopy(lumiweights_vals_fail[j][m][mask_pass])
-#                pred_vals_fail[j][m] = deepcopy(pred_vals_fail[j][m][mask_fail])
-#                lumiweights_vals_fail[j][m] = deepcopy(lumiweights_vals_fail[j][m][mask_fail])
-#
-#            n_pass[j] = lumiweights_vals_pass[j][0].sum()
-#            n_fail[j] = lumiweights_vals_fail[j][0].sum()
-#            n_total[j] = lumiweights_vals[j][0].sum()
-#            sum_pass += lumiweights_vals_pass[j][0].sum()
-#            sum_fail += lumiweights_vals_fail[j][0].sum()
-#            sum_total += lumiweights_vals[j][0].sum()
-#
-#        eff_signals = {}
-#        for key in pred_signals.keys():
-#            eff_signals[key] = 0.
-#        if do_sig:
-#            for key in pred_signals.keys():
-#                mask_signal_pass = pred_signals_fail[key][:,cutclass] > cut[cutclass]
-#                mask_signal_fail = pred_signals_fail[key][:,cutclass] <= cut[cutclass]
-#                pred_signals_pass[key] = deepcopy(pred_signals_fail[key][mask_signal_pass])
-#                eventweight_signals_pass[key] = deepcopy(eventweight_signals_fail[key][mask_signal_pass])
-#                pred_signals_fail[key] = deepcopy(pred_signals_fail[key][mask_signal_fail])
-#                eventweight_signals_fail[key] = deepcopy(eventweight_signals_fail[key][mask_signal_fail])
-#                eff_signals[key] = eventweight_signals_pass[key].sum() / float(eventweight_signals[key].sum())
-#
-#        # Log this cut
-#        effs = {}
-#        fractions_pass = {}
-#        fractions_fail = {}
-#        fractions_total = {}
-#        for j in range(len(pred_vals)):
-#            effs[j] = n_pass[j] / n_total[j]
-#            fractions_pass[j] = n_pass[j] / sum_pass
-#            fractions_fail[j] = n_fail[j] / sum_fail
-#            fractions_total[j] = n_total[j] / sum_total
-#
-#        str_effs = '('
-#        str_fracs_pass = '('
-#        str_fracs_fail = '('
-#        str_fracs_total = '('
-#        for j in range(len(pred_vals)):
-#            str_effs += '{0:3.3f}'.format(effs[j])
-#            str_fracs_pass += '{0:3.3f}'.format(fractions_pass[j])
-#            str_fracs_fail += '{0:3.3f}'.format(fractions_fail[j])
-#            str_fracs_total += '{0:3.3f}'.format(fractions_total[j])
-#            if j < len(pred_vals)-1:
-#                str_effs += ','
-#                str_fracs_pass += ','
-#                str_fracs_fail += ','
-#                str_fracs_total += ','
-#        str_effs += ')'
-#        str_fracs_pass += ')'
-#        str_fracs_fail += ')'
-#        str_fracs_total += ')'
-#
-#        str_eff_signals = '('
-#        for j in range(len(usesignals)):
-#            str_eff_signals += '{0:3.3f}'.format(eff_signals[usesignals[j]])
-#            if j < len(usesignals)-1:
-#                str_eff_signals += ','
-#        str_eff_signals += ')'
-#
-#        title = 'CutPerformance'
-#        if use_best_model: title += '_best'
-#        title += '.txt'
-#        with open(outputfolder+'/'+title, 'w') as f:
-#            f.write('Tag: %s\n\n' % (tag))
-#            f.write('cutclass, cutvalue (val >= cutvalue), (signal efficiency), (efficiencies), (fractions before cut), (fractions after cut), (fractions left)\n')
-#            f.write('{0}, {1}, {2}, {3}, {4}, {5}, {6}\n'.format(cutclass, cut[cutclass], str_eff_signals, str_effs, str_fracs_total, str_fracs_pass, str_fracs_fail))
-#
-#
-#        for cl in range(len(pred_vals)):
-#            # 'cl' is the output node number
-#            nbins = 100
-#            binwidth = 1./float(nbins)
-#            y_vals_pass = {}
-#            y_vals_fail = {}
-#            bin_edges_vals = {}
-#            bin_edges_vals_pass = {}
-#            bin_edges_vals_fail = {}
-#            bin_centers_pass = {}
-#            bin_centers_fail = {}
-#            yerrs_pass = {}
-#            yerrs_fail = {}
-#
-#            for i in range(len(pred_vals)):
-#                # 'i' is the true class (always the first index)
-#                y_vals_pass[i], bin_edges_vals_pass[i] = np.histogram(pred_vals_pass[i][cl], bins=nbins, weights=lumiweights_vals_pass[i][cl])
-#                bin_centers_pass[i] = 0.5*(bin_edges_vals_pass[i][1:] + bin_edges_vals_pass[i][:-1])
-#                yerrs_pass[i] = y_vals_pass[i]**0.5
-#                y_vals_fail[i], bin_edges_vals_fail[i] = np.histogram(pred_vals_fail[i][cl], bins=nbins, weights=lumiweights_vals_fail[i][cl])
-#                bin_centers_fail[i] = 0.5*(bin_edges_vals_fail[i][1:] + bin_edges_vals_fail[i][:-1])
-#                yerrs_fail[i] = y_vals_fail[i]**0.5
-#
-#            y_signals_pass = {}
-#            y_signals_fail = {}
-#            yerrs_signals_pass = {}
-#            yerrs_signals_fail = {}
-#            if do_sig:
-#                for key in pred_signals.keys():
-#                    y_signals_pass[key], dummy = np.histogram(pred_signals_pass[key][:,cl], bins=nbins, weights=eventweight_signals_pass[key])
-#                    yerrs_signals_pass[key] = y_signals_pass[key]**0.5
-#                    y_signals_fail[key], dummy = np.histogram(pred_signals_fail[key][:,cl], bins=nbins, weights=eventweight_signals_fail[key])
-#                    yerrs_signals_fail[key] = y_signals_fail[key]**0.5
-#
-#            # Passing events
-#            plt.clf()
-#            fig = plt.figure()
-#            classtitle_to_use = ''
-#            for i in range(len(pred_vals_pass)):
-#                plt.errorbar(bin_centers_pass[i], y_vals_pass[i], yerr=yerrs_pass[i], fmt = '.', drawstyle = 'steps-mid', linestyle=' ', label='Validation sample, ' + classtitles[i], color=colorstr[i])
-#                if i == cl:
-#                    classtitle_to_use = classtitles[i]
-#
-#            if do_sig:
-#                for sigidx in range(len(usesignals)):
-#                    plt.hist(pred_signals_pass[usesignals[sigidx]][:,cl], weights=eventweight_signals_pass[usesignals[sigidx]], bins=nbins, histtype='step', label='Signal (%s)' % signalmasses[usesignals[sigidx]], color='k', linestyle=signal_linestyles[sigidx])
-#                # plt.errorbar(bin_centers[i], y_signals[usesignal], yerr=yerrs_signals[usesignal], fmt = '.', drawstyle = 'steps-mid', linestyle=' ', label='Signal sample', color='k')
-#            plt.legend(loc='best', prop={'size': 8})
-#            plt.yscale('log')
-#            plt.xlim([-0.05, 1.05])
-#            plt.xlabel('Classifier output for node '+classtitle_to_use)
-#            plt.ylabel('Number of events / bin (weighted by luminosity)')
-#            title = 'Distribution_node'+str(cl)+'_enrichedclass' + str(cutclass)
-#            if use_best_model: title += '_best'
-#            title += '.pdf'
-#            fig.savefig(plotfolder+'/'+title)
-#            plt.close()
-#
-#            # Failing events
-#            plt.clf()
-#            fig = plt.figure()
-#            classtitle_to_use = ''
-#            for i in range(len(pred_vals_fail)):
-#                plt.errorbar(bin_centers_fail[i], y_vals_fail[i], yerr=yerrs_fail[i], fmt = '.', drawstyle = 'steps-mid', linestyle=' ', label='Validation sample, ' + classtitles[i], color=colorstr[i])
-#                if i == cl:
-#                    classtitle_to_use = classtitles[i]
-#
-#            if do_sig:
-#                for sigidx in range(len(usesignals)):
-#                    plt.hist(pred_signals_fail[usesignals[sigidx]][:,cl], weights=eventweight_signals_fail[usesignals[sigidx]], bins=nbins, histtype='step', label='Signal (%s)' % signalmasses[usesignals[sigidx]], color='k', linestyle=signal_linestyles[sigidx])
-#                # plt.errorbar(bin_centers[i], y_signals[usesignal], yerr=yerrs_signals[usesignal], fmt = '.', drawstyle = 'steps-mid', linestyle=' ', label='Signal sample', color='k')
-#            plt.legend(loc='best', prop={'size': 8})
-#            plt.yscale('log')
-#            plt.xlim([-0.05, 1.05])
-#            plt.xlabel('Classifier output for node '+classtitle_to_use)
-#            plt.ylabel('Number of events / bin (weighted by luminosity)')
-#            title = 'Distribution_node'+str(cl)+'_failingcut' + str(cutclass)
-#            if use_best_model: title += '_best'
-#            title += '.pdf'
-#            fig.savefig(plotfolder+'/'+title)
-#            plt.close()
-#
-#def apply_cuts(parameters, outputfolder, best_cuts, input_train, input_val, input_test, labels_train, labels_val, labels_test, sample_weights_train, sample_weights_val, sample_weights_test, eventweights_train, eventweights_val, eventweights_test, pred_train, pred_val, pred_test, signals=None, eventweight_signals=None, pred_signals=None, signal_identifiers=None, use_best_model=False):
-#
-#    print 'Now applying the cuts'
-#    do_sig = (pred_signals is not None) and (eventweight_signals is not None) and (signals is not None) and (signal_identifiers is not None)
-#    tag = dict_to_str(parameters)
-#    classtitles = get_classtitles(parameters)
-#    fraction = get_fraction(parameters)
-#
-#    cut = best_cuts[0]
-#    cutclass = cut.keys()[0]
-#    cutvalue = cut[cutclass]
-#
-#    # Define masks for passing and failing the cut
-#    mask_train_pass = pred_train[:,cutclass] > cutvalue
-#    mask_train_fail = pred_train[:,cutclass] <= cutvalue
-#    mask_val_pass = pred_val[:,cutclass] > cutvalue
-#    mask_val_fail = pred_val[:,cutclass] <= cutvalue
-#    mask_test_pass = pred_test[:,cutclass] > cutvalue
-#    mask_test_fail = pred_test[:,cutclass] <= cutvalue
-#    mask_signals_pass = {}
-#    mask_signals_fail = {}
-#    if do_sig:
-#        for key in pred_signals.keys():
-#            mask_signals_pass[key] = pred_signals[key][:,cutclass] > cutvalue
-#            mask_signals_fail[key] = pred_signals[key][:,cutclass] <= cutvalue
-#
-#    # Make deepcopies of pass and fail arrays
-#    input_train_pass = deepcopy(input_train)
-#    input_val_pass = deepcopy(input_val)
-#    input_test_pass = deepcopy(input_test)
-#    labels_train_pass = deepcopy(labels_train)
-#    labels_val_pass = deepcopy(labels_val)
-#    labels_test_pass = deepcopy(labels_test)
-#    sample_weights_train_pass = deepcopy(sample_weights_train)
-#    sample_weights_val_pass = deepcopy(sample_weights_val)
-#    sample_weights_test_pass = deepcopy(sample_weights_test)
-#    eventweights_train_pass = deepcopy(eventweights_train)
-#    eventweights_val_pass = deepcopy(eventweights_val)
-#    eventweights_test_pass = deepcopy(eventweights_test)
-#    signals_pass = {}
-#    eventweight_signals_pass = {}
-#    pred_signals_pass = {}
-#    if do_sig:
-#        for key in pred_signals.keys():
-#            signals_pass[key] =   deepcopy(signals[key])
-#            eventweight_signals_pass[key] = deepcopy(eventweight_signals[key])
-#            pred_signals_pass[key] = deepcopy(pred_signals[key])
-#
-#    input_train_fail = deepcopy(input_train)
-#    input_val_fail = deepcopy(input_val)
-#    input_test_fail = deepcopy(input_test)
-#    labels_train_fail = deepcopy(labels_train)
-#    labels_val_fail = deepcopy(labels_val)
-#    labels_test_fail = deepcopy(labels_test)
-#    sample_weights_train_fail = deepcopy(sample_weights_train)
-#    sample_weights_val_fail = deepcopy(sample_weights_val)
-#    sample_weights_test_fail = deepcopy(sample_weights_test)
-#    eventweights_train_fail = deepcopy(eventweights_train)
-#    eventweights_val_fail = deepcopy(eventweights_val)
-#    eventweights_test_fail = deepcopy(eventweights_test)
-#    signals_fail = {}
-#    eventweight_signals_fail = {}
-#    pred_signals_fail = {}
-#    if do_sig:
-#        for key in pred_signals.keys():
-#            signals_fail[key] = deepcopy(signals[key])
-#            eventweight_signals_fail[key] = deepcopy(eventweight_signals[key])
-#            pred_signals_fail[key] = deepcopy(pred_signals[key])
-#
-#    # Apply masks
-#    input_train_pass = input_train_pass[mask_train_pass]
-#    input_val_pass = input_val_pass[mask_val_pass]
-#    input_test_pass = input_test_pass[mask_test_pass]
-#    labels_train_pass = labels_train_pass[mask_train_pass]
-#    labels_val_pass = labels_val_pass[mask_val_pass]
-#    labels_test_pass = labels_test_pass[mask_test_pass]
-#    sample_weights_train_pass = sample_weights_train_pass[mask_train_pass]
-#    sample_weights_val_pass = sample_weights_val_pass[mask_val_pass]
-#    sample_weights_test_pass = sample_weights_test_pass[mask_test_pass]
-#    eventweights_train_pass = eventweights_train_pass[mask_train_pass]
-#    eventweights_val_pass = eventweights_val_pass[mask_val_pass]
-#    eventweights_test_pass = eventweights_test_pass[mask_test_pass]
-#    if do_sig:
-#        for key in pred_signals.keys():
-#            signals_pass[key] = signals_pass[key][mask_signals_pass[key]]
-#            eventweight_signals_pass[key] = eventweight_signals_pass[key][mask_signals_pass[key]]
-#            pred_signals_pass[key] = pred_signals_pass[key][mask_signals_pass[key]]
-#
-#    input_train_fail = input_train_fail[mask_train_fail]
-#    input_val_fail = input_val_fail[mask_val_fail]
-#    input_test_fail = input_test_fail[mask_test_fail]
-#    labels_train_fail = labels_train_fail[mask_train_fail]
-#    labels_val_fail = labels_val_fail[mask_val_fail]
-#    labels_test_fail = labels_test_fail[mask_test_fail]
-#    sample_weights_train_fail = sample_weights_train_fail[mask_train_fail]
-#    sample_weights_val_fail = sample_weights_val_fail[mask_val_fail]
-#    sample_weights_test_fail = sample_weights_test_fail[mask_test_fail]
-#    eventweights_train_fail = eventweights_train_fail[mask_train_fail]
-#    eventweights_val_fail = eventweights_val_fail[mask_val_fail]
-#    eventweights_test_fail = eventweights_test_fail[mask_test_fail]
-#    if do_sig:
-#        for key in pred_signals.keys():
-#            signals_fail[key] = signals_fail[key][mask_signals_fail[key]]
-#            eventweight_signals_fail[key] = eventweight_signals_fail[key][mask_signals_fail[key]]
-#            pred_signals_fail[key] = pred_signals_fail[key][mask_signals_fail[key]]
-#
-#    # Save outputs according to model used (last or best)
-#    ending = ''
-#    if use_best_model: ending += '_best'
-#    ending += '.npy'
-#
-#    if not os.path.isdir(outputfolder+'/cut'): os.makedirs(outputfolder+'/cut')
-#    np.save(outputfolder+'/cut/input_'+fraction+'_train_pass'+ending           , input_train_pass)
-#    np.save(outputfolder+'/cut/input_'+fraction+'_test_pass'+ending            , input_test_pass)
-#    np.save(outputfolder+'/cut/input_'+fraction+'_val_pass'+ending             , input_val_pass)
-#    np.save(outputfolder+'/cut/labels_'+fraction+'_train_pass'+ending          , labels_train_pass)
-#    np.save(outputfolder+'/cut/labels_'+fraction+'_test_pass'+ending           , labels_test_pass)
-#    np.save(outputfolder+'/cut/labels_'+fraction+'_val_pass'+ending            , labels_val_pass)
-#    np.save(outputfolder+'/cut/sample_weights_'+fraction+'_train_pass'+ending  , sample_weights_train_pass)
-#    np.save(outputfolder+'/cut/eventweights_'+fraction+'_train_pass'+ending    , eventweights_train_pass)
-#    np.save(outputfolder+'/cut/sample_weights_'+fraction+'_test_pass'+ending   , sample_weights_test_pass)
-#    np.save(outputfolder+'/cut/eventweights_'+fraction+'_test_pass'+ending     , eventweights_test_pass)
-#    np.save(outputfolder+'/cut/sample_weights_'+fraction+'_val_pass'+ending    , sample_weights_val_pass)
-#    np.save(outputfolder+'/cut/eventweights_'+fraction+'_val_pass'+ending      , eventweights_val_pass)
-#    if do_sig:
-#        for key in pred_signals.keys():
-#            np.save(outputfolder+'/cut/'+signal_identifiers[key]+'_pass'+ending                , signals_pass[key])
-#            np.save(outputfolder+'/cut/'+signal_identifiers[key]+'_eventweight_pass'+ending    , eventweight_signals_pass[key])
-#
-#    np.save(outputfolder+'/cut/input_'+fraction+'_train_fail'+ending           , input_train_fail)
-#    np.save(outputfolder+'/cut/input_'+fraction+'_test_fail'+ending            , input_test_fail)
-#    np.save(outputfolder+'/cut/input_'+fraction+'_val_fail'+ending             , input_val_fail)
-#    np.save(outputfolder+'/cut/labels_'+fraction+'_train_fail'+ending          , labels_train_fail)
-#    np.save(outputfolder+'/cut/labels_'+fraction+'_test_fail'+ending           , labels_test_fail)
-#    np.save(outputfolder+'/cut/labels_'+fraction+'_val_fail'+ending            , labels_val_fail)
-#    np.save(outputfolder+'/cut/sample_weights_'+fraction+'_train_fail'+ending  , sample_weights_train_fail)
-#    np.save(outputfolder+'/cut/eventweights_'+fraction+'_train_fail'+ending    , eventweights_train_fail)
-#    np.save(outputfolder+'/cut/sample_weights_'+fraction+'_test_fail'+ending   , sample_weights_test_fail)
-#    np.save(outputfolder+'/cut/eventweights_'+fraction+'_test_fail'+ending     , eventweights_test_fail)
-#    np.save(outputfolder+'/cut/sample_weights_'+fraction+'_val_fail'+ending    , sample_weights_val_fail)
-#    np.save(outputfolder+'/cut/eventweights_'+fraction+'_val_fail'+ending      , eventweights_val_fail)
-#    if do_sig:
-#        for key in pred_signals.keys():
-#            np.save(outputfolder+'/cut/'+signal_identifiers[key]+'_fail'+ending                , signals_fail[key])
-#            np.save(outputfolder+'/cut/'+signal_identifiers[key]+'_eventweight_fail'+ending    , eventweight_signals_fail[key])
-#
 
 class lr_reduce_on_plateau:
     """Class for reducing lr when given validation loss is not improving
@@ -1951,3 +1611,5 @@ def plot_prediction_samples(parameters, plotfolder, pred_train_all, labels_train
     title += '.pdf'
     fig.savefig(plotfolder+'/'+title)
     plt.close()
+
+

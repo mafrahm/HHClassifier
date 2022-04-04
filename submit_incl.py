@@ -4,8 +4,8 @@
 #SBATCH --constraint=GPU
 #SBATCH --nodes=1                                 # Number of nodes
 #SBATCH --job-name  steer
-#SBATCH --output    steer-%N-%j.out            # File to which STDOUT will be written
-#SBATCH --error     steer-%N-%j.err            # File to which STDERR will be written
+#SBATCH --output    Steer-%N-%j.out            # File to which STDOUT will be written
+#SBATCH --error     Steer-%N-%j.err            # File to which STDERR will be written
 #SBATCH --mail-type ALL                           # Type of email notification- BEGIN,END,FAIL,ALL
 #SBATCH --mail-user mathis.frahm@desy.de          # Email to which notifications will be sent. It defaults to <userid@mail.desy.de> if none is set.
 #SBATCH --requeue
@@ -21,4 +21,4 @@ export PATH="/beegfs/desy/user/frahmmat/anaconda2/bin:$PATH"
 source activate condaPy27
 echo $PYTHONPATH
 cd /beegfs/desy/user/frahmmat/HHClassifier
-python steer.py
+python steer_incl.py
